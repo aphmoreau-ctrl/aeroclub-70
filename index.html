@@ -232,19 +232,29 @@ dialog::backdrop{background:rgba(5,8,12,.7)}
 
 <div id="v-log" hidden><main>
   <div class="card2"><h2>Enregistrer un vol dans mon carnet</h2>
+    <p class="hint">Même présentation que ton carnet de vol : une ligne du carnet, colonne par colonne.</p>
     <div class="grid">
       <label class="f">Date<input type="date" id="lg-date"></label>
-      <label class="f">Avion<select id="lg-ac"></select></label>
+      <label class="f">Aéronef<select id="lg-ac"></select></label>
       <label class="f">Fonction à bord<select id="lg-fn"><option>P</option><option>P/I</option><option>EP</option><option>EP/I</option><option>I</option></select></label>
-      <label class="f">Temps de vol<select id="lg-col"><option value="mjc">Commandant de bord, jour</option><option value="mjd">Double commande, jour</option><option value="mnc">Commandant de bord, nuit</option><option value="mnd">Double commande, nuit</option></select></label>
-      <label class="f">Départ (heure)<input type="time" id="lg-t1"></label>
-      <label class="f">Arrivée (heure)<input type="time" id="lg-t2"></label>
-      <label class="f">ou durée (h:mm)<input id="lg-dur" placeholder="1:05"></label>
-      <label class="f">Atterrissages<input inputmode="numeric" id="lg-att" value="1"></label>
-      <label class="f" style="grid-column:1/-1">Nature du vol<input id="lg-nat" placeholder="LFQW - LFSX, local, TDP…"></label>
-      <label class="f" style="grid-column:1/-1">Observations<input id="lg-obs" placeholder="Instructeur, remarques…"></label>
+      <label class="f" style="grid-column:1/-1">Nature du vol<input id="lg-nat" placeholder="LFQW - LFSX, LOCAL, TDP…"></label>
     </div>
-    <div class="res" id="lg-sum" style="grid-template-columns:repeat(3,minmax(0,1fr))"></div>
+    <h3>Heures (facultatif, pour calculer la durée)</h3>
+    <div class="grid">
+      <label class="f">Départ<input type="time" id="lg-t1"></label>
+      <label class="f">Arrivée<input type="time" id="lg-t2"></label>
+      <label class="f">Vol de nuit<select id="lg-night"><option value="">Non</option><option value="1">Oui</option></select></label>
+    </div>
+    <h3>Pilote monomoteur</h3>
+    <div class="scroll"><table class="t" style="max-width:520px">
+      <thead><tr><th></th><th style="text-align:center">Double</th><th style="text-align:center">Cdt de bord</th></tr></thead>
+      <tbody><tr><td>Jour</td><td style="text-align:center"><input id="lg-mjd" placeholder="h:mm"></td><td style="text-align:center"><input id="lg-mjc" placeholder="h:mm"></td></tr>
+      <tr><td>Nuit</td><td style="text-align:center"><input id="lg-mnd" placeholder="h:mm"></td><td style="text-align:center"><input id="lg-mnc" placeholder="h:mm"></td></tr></tbody></table></div>
+    <p class="hint">Avec les heures de départ et d'arrivée, la durée se place toute seule : en <b>Cdt de bord</b> si tu es P, en <b>Double</b> si tu es P/I, EP ou EP/I (vol avec instructeur). Tu peux corriger.</p>
+    <div class="grid">
+      <label class="f">Atterrissages (ATT)<input inputmode="numeric" id="lg-att" value="1"></label>
+      <label class="f" style="grid-column:span 2">Observations et visa<input id="lg-obs" placeholder="Instructeur, remarques…"></label>
+    </div>
     <div class="row"><button class="btn primary" id="lg-save">Ajouter au carnet de vol</button><span class="hint" id="lg-msg"></span></div>
     <p class="hint">Le vol s'ajoute directement dans ton application Carnets de vol, avec le même compte. Tu peux le modifier ensuite depuis le carnet.</p>
   </div>
@@ -266,6 +276,7 @@ dialog::backdrop{background:rgba(5,8,12,.7)}
     <label class="f">Clé CheckWX (météo, facultatif)<input id="set-wx" autocomplete="off" placeholder="colle ta clé ici"></label>
     <label class="f">Affichage<select id="set-theme"><option value="">Selon l'appareil</option><option value="dark">Sombre (cockpit)</option><option value="light">Clair (plein soleil)</option></select></label></div>
     <p class="hint">Ta masse est proposée d'un toucher pour le siège pilote. Pour récupérer automatiquement le METAR (QNH, température, vent), crée une clé gratuite sur checkwxapi.com et colle-la ici.</p></div>
+  <p class="hint" style="text-align:center">Version du <span id="app-ver"></span></p>
   <p class="hint" style="text-align:center">Aide au calcul : les données de chaque avion doivent provenir de sa fiche de pesée et de son manuel de vol, qui font foi.</p>
 </main></div>
 
@@ -345,6 +356,14 @@ const S={ac:[],cur:null,view:'home',cl:{},clSec:null,clGrp:'normal',resa:'https:
 const LS='ac70-state-v1';
 function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({ac:S.ac,cur:S.cur,load:S.load,plan:S.plan,perf:S.perf,me:S.me,theme:S.theme,unit:S.unit,wxkey:S.wxkey,cl:S.cl,resa:S.resa,clBoxes:S.clBoxes}))}catch(e){}}
 function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LS)||'null')||JSON.parse(localStorage.getItem('mc-state-v2')||'null');if(j)Object.assign(S,j)}catch(e){}}
+/* Les anciennes fiches regroupaient les sièges par rangée : on sépare chaque personne */
+const APP_VERSION='24/09/2026 (carnet par colonnes)';
+function splitSeats(a){if(!a||!Array.isArray(a.stations))return false;let ch=false;const out=[];
+  a.stations.forEach(st=>{const n=(st.name||'').toLowerCase();
+    if(/^(sièges? avant|pilote et passager avant|pilote \+ passager)$/.test(n)){out.push({name:'Pilote',arm:st.arm,max:0},{name:'Passager avant',arm:st.arm,max:0});ch=true}
+    else if(/^(sièges? arrière|passagers arrière)$/.test(n)){out.push({name:'Passager arrière gauche',arm:st.arm,max:0},{name:'Passager arrière droit',arm:st.arm,max:0});ch=true}
+    else out.push(st)});
+  if(ch){a.stations=out;if(S.load[a.id])S.load[a.id]={}}return ch}
 const curAc=()=>S.ac.find(a=>a.id===S.cur)||S.ac[0]||null;
 const plan=a=>{const p=(S.plan[a.id]=S.plan[a.id]||{});if(p.taxi==null)p.taxi='20';if(p.res==null)p.res=true;return p};
 const load=a=>(S.load[a.id]=S.load[a.id]||{});
@@ -814,29 +833,30 @@ function renderCL(){
     if(st.length>=n&&!box.querySelector('.done-msg'))box.querySelector('.card2').insertAdjacentHTML('beforeend','<div class="done-msg">Check-list terminée</div>')});
 }
 
-/* ---------- Après le vol ---------- */
+/* ---------- Après le vol (une ligne du carnet) ---------- */
+const COLS=['mjd','mjc','mnd','mnc'];
+const parseHM=v=>{v=String(v||'').trim();if(!v)return 0;const m=v.match(/^(\d{1,2})\s*[:hH.,]\s*(\d{1,2})$/);if(m)return(+m[1])*60+(+m[2]);const n=v.match(/^\d+$/);return n?+v:0};
+const fmtHM=m=>m?Math.floor(m/60)+':'+String(m%60).padStart(2,'0'):'';
 function renderLog(){
-  const sel=$('#lg-ac');sel.innerHTML=S.ac.map(a=>`<option value="${a.id}">${esc(a.immat||'?')} ${esc(a.type)}</option>`).join('');if(curAc())sel.value=curAc().id;
+  const sel=$('#lg-ac');sel.innerHTML=S.ac.map(a=>`<option value="${a.id}">${esc(a.immat||'?')}, ${esc(a.type)}</option>`).join('');if(curAc())sel.value=curAc().id;
   if(!$('#lg-date').value)$('#lg-date').value=new Date().toISOString().slice(0,10);
   if(!$('#lg-nat').value&&S.perf.ad)$('#lg-nat').value=String(S.perf.ad).toUpperCase()+' - ';
-  ['lg-t1','lg-t2','lg-dur','lg-att'].forEach(id=>$('#'+id).oninput=logSum);logSum();
+  ['lg-t1','lg-t2','lg-fn','lg-night'].forEach(id=>{const e=$('#'+id);e.oninput=autoCol;e.onchange=autoCol});
 }
-function logMinutes(){
-  const d=$('#lg-dur').value.trim();
-  if(d){const m=d.match(/^(\d+)(?:[:h.,](\d{1,2}))?$/);if(m)return(+m[1])*60+(+(m[2]||0))+(d.includes(':')||d.includes('h')?0:0);return 0}
-  const t1=$('#lg-t1').value,t2=$('#lg-t2').value;if(!t1||!t2)return 0;
-  const [a,b]=t1.split(':').map(Number),[c,e]=t2.split(':').map(Number);let m=(c*60+e)-(a*60+b);if(m<0)m+=1440;return m;
+function autoCol(){
+  const t1=$('#lg-t1').value,t2=$('#lg-t2').value;if(!t1||!t2)return;
+  const [a,b]=t1.split(':').map(Number),[c,e]=t2.split(':').map(Number);let m=(c*60+e)-(a*60+b);if(m<0)m+=1440;
+  const fn=$('#lg-fn').value,dbl=/\/I|EP/.test(fn),night=$('#lg-night').value==='1';
+  COLS.forEach(k=>$('#lg-'+k).value='');$('#lg-'+(night?(dbl?'mnd':'mnc'):(dbl?'mjd':'mjc'))).value=fmtHM(m);
 }
-function logSum(){const m=logMinutes();$('#lg-sum').innerHTML=cell(m?hm(m):'—','Temps de vol')+cell(nv($('#lg-att').value)||0,'Atterrissages')+cell(esc($('#lg-col').selectedOptions[0]?.text||''),'Colonne du carnet')}
-$('#lg-col').onchange=logSum;
 $('#lg-save').onclick=async()=>{
-  const msg=$('#lg-msg'),a=S.ac.find(x=>x.id===$('#lg-ac').value),m=logMinutes(),date=$('#lg-date').value;
+  const msg=$('#lg-msg'),a=S.ac.find(x=>x.id===$('#lg-ac').value),date=$('#lg-date').value;
+  const t={};COLS.forEach(k=>{const m=parseHM($('#lg-'+k).value);if(m)t[k]=m});const tot=Object.values(t).reduce((x,y)=>x+y,0);
   if(!BASE){msg.textContent='Connecte-toi pour enregistrer dans ton carnet.';return}
-  if(!a||!date||!m){msg.textContent='Indique la date, l\'avion et le temps de vol.';return}
-  const col=$('#lg-col').value,v={id:uid(),ord:Date.now(),date,type:a.type||'',immat:a.immat||'',fonction:$('#lg-fn').value,nature:$('#lg-nat').value.trim().toUpperCase(),obs:$('#lg-obs').value.trim(),att:Math.round(nv($('#lg-att').value))};
-  v[col]=m;
+  if(!a||!date||!tot){msg.textContent='Indique la date, l\'aéronef et au moins un temps de vol.';return}
+  const v={id:uid(),ord:Date.now(),date,type:a.type||'',immat:a.immat||'',fonction:$('#lg-fn').value,nature:$('#lg-nat').value.trim().toUpperCase(),obs:$('#lg-obs').value.trim(),att:Math.round(nv($('#lg-att').value)),...t};
   try{await BASE.collection('avion').doc('y'+date.slice(0,4)).set({vols:firebase.firestore.FieldValue.arrayUnion(v)},{merge:true});
-    msg.textContent=`Vol ajouté au carnet : ${date.split('-').reverse().join('/')}, ${hm(m)}.`;toast('Vol ajouté au carnet');['lg-t1','lg-t2','lg-dur','lg-obs'].forEach(id=>$('#'+id).value='');logSum();
+    msg.textContent=`Vol ajouté au carnet : ${date.split('-').reverse().join('/')}, ${hm(tot)}.`;toast('Vol ajouté au carnet');['lg-t1','lg-t2','lg-obs',...COLS.map(k=>'lg-'+k)].forEach(id=>$('#'+id).value='');
   }catch(e){msg.textContent='Enregistrement impossible ('+(e.code||e.message)+').'}
 };
 
@@ -845,7 +865,7 @@ document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{S.view=b.data
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{S.view=b.dataset.go;render()});
 function showView(){['home','prep','cl','log','ac'].forEach(v=>$('#v-'+v).hidden=S.view!==v);document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===S.view)))}
 function header(){const a=curAc();$('#ac-immat').textContent=a?(a.immat||'Sans immat.'):'Aucun avion';$('#ac-type').textContent=a?[a.type,a.club].filter(Boolean).join(', '):''}
-function render(){showView();renderAcList();header();if(S.view==='home')renderHome();if(S.view==='cl')renderCL();if(S.view==='log')renderLog();$('#set-resa').value=S.resa||'';$('#set-me').value=S.me||'';$('#set-theme').value=S.theme||'';$('#set-unit').value=S.unit||'L';$('#set-wx').value=S.wxkey||'';if(S.view==='prep')renderForms()}
+function render(){const av=$('#app-ver');if(av)av.textContent=APP_VERSION;showView();renderAcList();header();if(S.view==='home')renderHome();if(S.view==='cl')renderCL();if(S.view==='log')renderLog();$('#set-resa').value=S.resa||'';$('#set-me').value=S.me||'';$('#set-theme').value=S.theme||'';$('#set-unit').value=S.unit||'L';$('#set-wx').value=S.wxkey||'';if(S.view==='prep')renderForms()}
 
 /* ---------- Synchronisation (même compte que Carnets de vol) ---------- */
 let DB=null,BASE=null,AUTH=null,UNSUB=null;
@@ -853,7 +873,7 @@ function setSync(t){$('#sync').textContent=t}
 function pushAc(a){if(BASE)BASE.collection('aircraft').doc(a.id).set(JSON.parse(JSON.stringify(a))).catch(()=>toast('Enregistrement en attente de réseau'))}
 function dropAc(id){if(BASE)BASE.collection('aircraft').doc(id).delete().catch(()=>{})}
 function init(){
-  loadLocal();applyTheme();render();
+  loadLocal();S.ac.forEach(splitSeats);applyTheme();render();
   if(!window.firebase){setSync('Sur cet appareil');return}
   firebase.initializeApp(FIREBASE_CONFIG);DB=firebase.firestore();
   try{DB.settings({ignoreUndefinedProperties:true,experimentalForceLongPolling:true})}catch(e){}
@@ -868,7 +888,7 @@ function init(){
     UNSUB=BASE.collection('aircraft').onSnapshot({includeMetadataChanges:true},qs=>{
       const remote=qs.docs.map(d=>d.data());
       if(first&&!qs.metadata.fromCache){first=false;local.filter(a=>!remote.some(r=>r.id===a.id)).forEach(pushAc)}
-      if(remote.length){S.ac=remote.sort((x,y)=>(x.immat||'').localeCompare(y.immat||''));if(!S.ac.some(a=>a.id===S.cur))S.cur=S.ac[0].id;saveLocal();
+      if(remote.length){S.ac=remote.sort((x,y)=>(x.immat||'').localeCompare(y.immat||''));S.ac.forEach(x=>{if(splitSeats(x))pushAc(x)});if(!S.ac.some(a=>a.id===S.cur))S.cur=S.ac[0].id;saveLocal();
         const act=document.activeElement;if(!ED&&!(act&&act.matches&&act.matches('input,select')))render();else renderAcList()}
       setSync(qs.metadata.hasPendingWrites?'Envoi en cours…':qs.metadata.fromCache?'Hors ligne':'Synchronisé');
     },()=>setSync('Synchronisation interrompue'));
