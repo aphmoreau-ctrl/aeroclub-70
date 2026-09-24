@@ -429,7 +429,7 @@ function interp(tb,key,m,z,t){
 function modelDA40D(lr){
   const a=blankAircraft();
   Object.assign(a,{type:'DA 40 D',mtow:1150,mlw:1092,mzfw:0,density:0.84,
-    stations:[{name:'Sièges avant',arm:2.30,max:0},{name:'Sièges arrière',arm:3.25,max:0},{name:'Bagages',arm:3.65,max:30}],
+    stations:[{name:'Pilote',arm:2.30,max:0},{name:'Passager avant',arm:2.30,max:0},{name:'Passager arrière gauche',arm:3.25,max:0},{name:'Passager arrière droit',arm:3.25,max:0},{name:'Bagages',arm:3.65,max:30}],
     tanks:[{name:'Réservoir aile gauche',arm:2.63,cap:lr?73.8:53,unus:0},{name:'Réservoir aile droite',arm:2.63,cap:lr?73.8:53,unus:0}],maxImb:34,fuelUnit:'gal',
     envelope:[{m:780,arm:2.40},{m:980,arm:2.40},{m:1150,arm:2.46},{m:1150,arm:lr?2.55:2.59},{m:780,arm:lr?2.55:2.59}],
     nomo:'DA40D',perfNote:'Atterrissage : calculé avec les abaques du manuel (pages 5-20 et 5-21, volets LDG), numérisés et vérifiés sur les exemples du manuel (écart inférieur à 2 %). Décollage : non calculé, la page 5-12 du manuel français reproduit par erreur l\'abaque de la page 5-11.',source:'Manuel de vol DA 40 D, doc. 6.01.05-F rév. 5 : sections 2, 5 et 6'+(lr?' (réservoirs Long Range)':' (réservoirs standard)')});
